@@ -137,7 +137,7 @@ NODE_ENV=development
 
 ## API Endpoints
 
-- `POST   /api/v1/users/register` Register a new user
+- `POST   /api/v1/users/register` Register a new user (avatar and coverImage are optional)
 - `POST   /api/v1/users/login` Login and receive tokens
 - `POST   /api/v1/users/refresh-token` Refresh access token
 - `POST   /api/v1/users/logout` Logout user

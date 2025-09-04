@@ -2,31 +2,61 @@ import { Video } from "../models/videoModel.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { ApiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 
 // Create Video
 export const createVideo = asyncHandler(async (req, res) => {
   const { title, description, duration } = req.body;
-  const videoFile = req.files?.videoFile?.[0]?.path;
-  const thumbnail = req.files?.thumbnail?.[0]?.path;
+  const videoFileLocalPath = req.files?.videoFile?.[0]?.path;
+  const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
-  if (!videoFile || !thumbnail || !title || !description || !duration) {
+  if (!videoFileLocalPath || !thumbnailLocalPath || !title || !description || !duration) {
     throw new ApiError(400, "All fields are required");
   }
 
-  // TODO: Upload videoFile and thumbnail to cloudinary if needed
+  // Upload video file to cloudinary
+  const videoFile = await uploadOnCloudinary(videoFileLocalPath);
+  if (!videoFile) {
+    throw new ApiError(500, "Failed to upload video file to cloudinary");
+  }
 
-  const video = await Video.create({
-    videoFile, // Should be cloudinary url
-    thumbnail, // Should be cloudinary url
-    title,
-    description,
-    duration,
-    owner: req.user._id,
-  });
+  // Upload thumbnail to cloudinary
+  const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+  if (!thumbnail) {
+    // Cleanup video file if thumbnail upload fails
+    await deleteFromCloudinary(videoFile.public_id);
+    throw new ApiError(500, "Failed to upload thumbnail to cloudinary");
+  }
 
-  res
-    .status(201)
-    .json(new ApiResponse(201, video, "Video created successfully"));
+  try {
+    const video = await Video.create({
+      videoFile: videoFile.url,
+      thumbnail: thumbnail.url,
+      title,
+      description,
+      duration,
+      owner: req.user._id,
+    });
+
+    res
+      .status(201)
+      .json(new ApiResponse(201, video, "Video created successfully"));
+  } catch (error) {
+    // Cleanup uploaded files if video creation fails
+    if (videoFile) {
+      await deleteFromCloudinary(videoFile.public_id);
+    }
+    if (thumbnail) {
+      await deleteFromCloudinary(thumbnail.public_id);
+    }
+    throw new ApiError(
+      500,
+      "Something went wrong while creating video and files were deleted"
+    );
+  }
 });
 
 // Get all videos

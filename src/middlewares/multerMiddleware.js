@@ -1,4 +1,6 @@
 import multer from "multer";
+import path from "path";
+import crypto from "crypto";
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -12,10 +14,9 @@ const storage = multer.diskStorage({
     cb(null, dest);
   },
   filename: (req, file, cb) => {
-    // Ensure Unicode (including Bengali) filenames are handled safely
-    let safeName = file.originalname.normalize("NFC");
-    safeName = safeName.replace(/[<>:"/\\|?*]/g, "_");
-    cb(null, safeName);
+    // Generate unique filename with random string to prevent conflicts
+    const uniqueName = crypto.randomUUID() + path.extname(file.originalname);
+    cb(null, uniqueName);
   },
 });
 

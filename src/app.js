@@ -12,9 +12,25 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // cors configurations
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://madhutube-frontend.vercel.app",
+  process.env.CORS_ORIGIN,
+].filter(Boolean); // Remove undefined values
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );

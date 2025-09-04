@@ -57,7 +57,6 @@ app.use("/api/v1/tweets", tweetRoute);
 
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to backend madhutube api...</h1>");
-  console.log("cookies:", req.cookies);
 });
 
 app.use(errorHandler);

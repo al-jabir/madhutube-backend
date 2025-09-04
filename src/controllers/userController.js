@@ -81,7 +81,6 @@ const registerUser = asyncHandler(async (req, res) => {
       .status(201)
       .json(new ApiResponse(201, createdUser, "User registered successfully"));
   } catch (error) {
-    console.log("User registration failed:", error);
 
     // Cleanup uploaded images if user creation fails
     if (avatar) {

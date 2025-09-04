@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import path from "path";
 import { errorHandler } from "./middlewares/errorMiddleware.js";
 
 const app = express();
@@ -8,7 +9,10 @@ const app = express();
 // basic configurations
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(express.static("public"));
+// Serve static files except videos (videos are served from Cloudinary)
+app.use('/images', express.static(path.join(process.cwd(), 'public/images')));
+app.use('/temp', express.static(path.join(process.cwd(), 'public/temp')));
+// Note: Videos are NOT served statically - they come from Cloudinary
 app.use(cookieParser());
 
 // cors configurations
@@ -54,6 +58,15 @@ app.use("/api/v1/likes", likeRoute);
 app.use("/api/v1/playlists", playlistRoute);
 app.use("/api/v1/subscriptions", subscriptionRoute);
 app.use("/api/v1/tweets", tweetRoute);
+
+// Handle requests for local video files (they should come from Cloudinary)
+app.get('/public/videos/:filename', (req, res) => {
+  res.status(410).json({
+    error: 'Video files are served from Cloudinary, not local storage',
+    message: 'This local video file has been moved to cloud storage. Please use the Cloudinary URL instead.',
+    requestedFile: req.params.filename
+  });
+});
 
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to backend madhutube api...</h1>");

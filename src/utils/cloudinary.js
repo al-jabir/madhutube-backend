@@ -16,32 +16,37 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     // Check if file exists before uploading
     if (!fs.existsSync(localFilePath)) {
-      console.error(`File not found: ${localFilePath}`);
+      console.error(`❌ File not found for upload: ${localFilePath}`);
       return null;
     }
 
+    console.log(`📤 Uploading to Cloudinary: ${localFilePath}`);
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
     });
 
+    console.log(`✅ Upload successful: ${response.url}`);
+
     // Delete file only after successful upload
     try {
       fs.unlinkSync(localFilePath);
+      console.log(`🗑️ Local file deleted: ${localFilePath}`);
     } catch (deleteError) {
-      console.warn(`Could not delete local file: ${localFilePath}`, deleteError.message);
+      console.warn(`⚠️ Could not delete local file: ${localFilePath}`, deleteError.message);
     }
 
     return response;
   } catch (error) {
-    console.error("Cloudinary upload error:", error.message);
+    console.error(`❌ Cloudinary upload error for ${localFilePath}:`, error.message);
 
     // Try to cleanup local file even if upload failed
     try {
       if (fs.existsSync(localFilePath)) {
         fs.unlinkSync(localFilePath);
+        console.log(`🗑️ Local file cleaned up after failed upload: ${localFilePath}`);
       }
     } catch (deleteError) {
-      console.warn(`Could not delete local file after failed upload: ${localFilePath}`, deleteError.message);
+      console.warn(`⚠️ Could not delete local file after failed upload: ${localFilePath}`, deleteError.message);
     }
 
     return null;

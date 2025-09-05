@@ -49,6 +49,7 @@ import likeRoute from "./routes/likeRoute.js";
 import playlistRoute from "./routes/playlistRoute.js";
 import subscriptionRoute from "./routes/subscriptionRoute.js";
 import tweetRoute from "./routes/tweetRoute.js";
+import debugRoute from "./routes/debugRoute.js";
 
 app.use("/api/v1/healthcheck", healthcheckRouter);
 app.use("/api/v1/users", userRoute);
@@ -58,6 +59,7 @@ app.use("/api/v1/likes", likeRoute);
 app.use("/api/v1/playlists", playlistRoute);
 app.use("/api/v1/subscriptions", subscriptionRoute);
 app.use("/api/v1/tweets", tweetRoute);
+app.use("/api/v1/debug", debugRoute);
 
 // Handle requests for local video files (they should come from Cloudinary)
 app.get('/public/videos/:filename', (req, res) => {

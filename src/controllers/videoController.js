@@ -9,42 +9,77 @@ import {
 
 // Create Video
 export const createVideo = asyncHandler(async (req, res) => {
+  console.log("🎬 Video upload started");
+  console.log("📋 Request body:", req.body);
+  console.log("📁 Files received:", req.files);
+  console.log("👤 User:", req.user?._id);
+
   const { title, description, duration } = req.body;
   const videoFileLocalPath = req.files?.videoFile?.[0]?.path;
   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
-  if (!videoFileLocalPath || !thumbnailLocalPath || !title || !description || !duration) {
-    throw new ApiError(400, "All fields are required");
+  // Enhanced validation with detailed error messages
+  if (!title || !description || !duration) {
+    console.error("❌ Missing required fields:", { title: !!title, description: !!description, duration: !!duration });
+    throw new ApiError(400, "Title, description, and duration are required");
   }
+
+  if (!videoFileLocalPath) {
+    console.error("❌ Video file not found in request");
+    throw new ApiError(400, "Video file is required");
+  }
+
+  if (!thumbnailLocalPath) {
+    console.error("❌ Thumbnail file not found in request");
+    throw new ApiError(400, "Thumbnail file is required");
+  }
+
+  // Check if user is authenticated
+  if (!req.user || !req.user._id) {
+    console.error("❌ User authentication failed");
+    throw new ApiError(401, "User authentication required");
+  }
+
+  console.log(`📹 Video file path: ${videoFileLocalPath}`);
+  console.log(`🖼️ Thumbnail file path: ${thumbnailLocalPath}`);
 
   // Upload video file to cloudinary
+  console.log("⬆️ Starting video file upload to Cloudinary...");
   const videoFile = await uploadOnCloudinary(videoFileLocalPath);
   if (!videoFile) {
-    throw new ApiError(500, "Failed to upload video file to cloudinary");
+    console.error("❌ Video file upload to Cloudinary failed");
+    throw new ApiError(500, "Failed to upload video file to cloudinary. Please check your Cloudinary configuration.");
   }
+  console.log("✅ Video file uploaded successfully:", videoFile.url);
 
   // Upload thumbnail to cloudinary
+  console.log("⬆️ Starting thumbnail upload to Cloudinary...");
   const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
   if (!thumbnail) {
+    console.error("❌ Thumbnail upload to Cloudinary failed");
     // Cleanup video file if thumbnail upload fails
     await deleteFromCloudinary(videoFile.public_id);
-    throw new ApiError(500, "Failed to upload thumbnail to cloudinary");
+    throw new ApiError(500, "Failed to upload thumbnail to cloudinary. Please check your Cloudinary configuration.");
   }
+  console.log("✅ Thumbnail uploaded successfully:", thumbnail.url);
 
   try {
+    console.log("💾 Creating video record in database...");
     const video = await Video.create({
       videoFile: videoFile.url,
       thumbnail: thumbnail.url,
       title,
       description,
-      duration,
+      duration: parseFloat(duration),
       owner: req.user._id,
     });
 
+    console.log("✅ Video created successfully:", video._id);
     res
       .status(201)
       .json(new ApiResponse(201, video, "Video created successfully"));
   } catch (error) {
+    console.error("❌ Database error while creating video:", error);
     // Cleanup uploaded files if video creation fails
     if (videoFile) {
       await deleteFromCloudinary(videoFile.public_id);
@@ -54,7 +89,7 @@ export const createVideo = asyncHandler(async (req, res) => {
     }
     throw new ApiError(
       500,
-      "Something went wrong while creating video and files were deleted"
+      `Database error while creating video: ${error.message}`
     );
   }
 });

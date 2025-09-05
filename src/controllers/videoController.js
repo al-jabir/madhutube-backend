@@ -6,6 +6,7 @@ import {
   deleteFromCloudinary,
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
+import { getVideoDuration } from "../utils/videoDuration.js";
 
 // Create Video
 export const createVideo = asyncHandler(async (req, res) => {
@@ -14,14 +15,14 @@ export const createVideo = asyncHandler(async (req, res) => {
   console.log("📁 Files received:", req.files);
   console.log("👤 User:", req.user?._id);
 
-  const { title, description, duration } = req.body;
+  const { title, description } = req.body;
   const videoFileLocalPath = req.files?.videoFile?.[0]?.path;
   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
 
   // Enhanced validation with detailed error messages
-  if (!title || !description || !duration) {
-    console.error("❌ Missing required fields:", { title: !!title, description: !!description, duration: !!duration });
-    throw new ApiError(400, "Title, description, and duration are required");
+  if (!title || !description) {
+    console.error("❌ Missing required fields:", { title: !!title, description: !!description });
+    throw new ApiError(400, "Title and description are required");
   }
 
   if (!videoFileLocalPath) {
@@ -42,6 +43,17 @@ export const createVideo = asyncHandler(async (req, res) => {
 
   console.log(`📹 Video file path: ${videoFileLocalPath}`);
   console.log(`🖼️ Thumbnail file path: ${thumbnailLocalPath}`);
+
+  // Extract video duration automatically
+  console.log("⏱️ Extracting video duration...");
+  let duration;
+  try {
+    duration = await getVideoDuration(videoFileLocalPath);
+    console.log(`⏱️ Video duration extracted: ${duration} seconds`);
+  } catch (error) {
+    console.error("❌ Failed to extract video duration:", error);
+    throw new ApiError(500, `Failed to extract video duration: ${error.message}`);
+  }
 
   // Upload video file to cloudinary
   console.log("⬆️ Starting video file upload to Cloudinary...");
@@ -113,10 +125,16 @@ export const getVideo = asyncHandler(async (req, res) => {
 // Update video
 export const updateVideo = asyncHandler(async (req, res) => {
   const { title, description, duration } = req.body;
+  const updateData = {};
+
+  if (title !== undefined) updateData.title = title;
+  if (description !== undefined) updateData.description = description;
+  if (duration !== undefined) updateData.duration = duration;
+
   const video = await Video.findByIdAndUpdate(
     req.params.id,
-    { $set: { title, description, duration } },
-    { new: true }
+    { $set: updateData },
+    { new: true, runValidators: true }
   );
   if (!video) throw new ApiError(404, "Video not found");
   res.json(new ApiResponse(200, video, "Video updated successfully"));

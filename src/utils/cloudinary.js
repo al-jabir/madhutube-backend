@@ -4,6 +4,32 @@ import fs from "fs";
 
 dotenv.config();
 
+// Validate Cloudinary configuration
+const validateCloudinaryConfig = () => {
+  const requiredVars = {
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  };
+
+  const missingVars = Object.entries(requiredVars)
+    .filter(([key, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingVars.length > 0) {
+    console.error(`❌ Missing Cloudinary environment variables: ${missingVars.join(', ')}`);
+    return false;
+  }
+
+  console.log("✅ Cloudinary configuration validated");
+  return true;
+};
+
+// Validate configuration on module load
+if (!validateCloudinaryConfig()) {
+  console.warn("⚠️ Cloudinary may not function properly due to missing configuration");
+}
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -12,7 +38,10 @@ cloudinary.config({
 
 const uploadOnCloudinary = async (localFilePath) => {
   try {
-    if (!localFilePath) return null;
+    if (!localFilePath) {
+      console.error("❌ No file path provided to uploadOnCloudinary");
+      return null;
+    }
 
     // Check if file exists before uploading
     if (!fs.existsSync(localFilePath)) {
@@ -20,12 +49,29 @@ const uploadOnCloudinary = async (localFilePath) => {
       return null;
     }
 
+    // Check file size
+    const stats = fs.statSync(localFilePath);
+    const fileSizeInMB = stats.size / (1024 * 1024);
+    console.log(`📁 File size: ${fileSizeInMB.toFixed(2)} MB`);
+
+    // Validate Cloudinary configuration before upload
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error("❌ Cloudinary configuration is incomplete");
+      return null;
+    }
+
     console.log(`📤 Uploading to Cloudinary: ${localFilePath}`);
+
+    // Upload with timeout and resource type detection
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      timeout: 120000, // 2 minutes timeout
+      chunk_size: 20000000, // 20MB chunks for large files
     });
 
     console.log(`✅ Upload successful: ${response.url}`);
+    console.log(`🎥 Public ID: ${response.public_id}`);
+    console.log(`📄 Resource type: ${response.resource_type}`);
 
     // Delete file only after successful upload
     try {
@@ -37,7 +83,14 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     return response;
   } catch (error) {
-    console.error(`❌ Cloudinary upload error for ${localFilePath}:`, error.message);
+    console.error(`❌ Cloudinary upload error for ${localFilePath}:`);
+    console.error(`Error message: ${error.message}`);
+    if (error.http_code) {
+      console.error(`HTTP Code: ${error.http_code}`);
+    }
+    if (error.error && error.error.message) {
+      console.error(`Cloudinary Error: ${error.error.message}`);
+    }
 
     // Try to cleanup local file even if upload failed
     try {

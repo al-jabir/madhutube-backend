@@ -87,7 +87,7 @@ export const createVideo = asyncHandler(async (req, res) => {
       thumbnail: thumbnail.url,
       title,
       description,
-      duration: parseFloat(duration.toFixed(2)), // Ensure consistent formatting
+      duration: parseFloat(duration), // Ensure it's stored as a number
       owner: req.user._id,
     });
 
@@ -134,7 +134,7 @@ export const updateVideo = asyncHandler(async (req, res) => {
 
   if (title !== undefined) updateData.title = title;
   if (description !== undefined) updateData.description = description;
-  if (duration !== undefined) updateData.duration = duration;
+  if (duration !== undefined) updateData.duration = parseFloat(duration);
 
   const video = await Video.findByIdAndUpdate(
     req.params.id,

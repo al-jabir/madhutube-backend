@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
@@ -74,10 +75,23 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 
     console.log(`📤 Uploading to Cloudinary: ${localFilePath}`);
+    console.log(`   File size: ${fileSizeInMB.toFixed(2)} MB`);
+    console.log(`   File extension: ${path.extname(localFilePath)}`);
+
+    // Determine resource type based on file extension
+    let resourceType = "auto";
+    const extension = path.extname(localFilePath).toLowerCase();
+    if ([".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv"].includes(extension)) {
+      resourceType = "video";
+    } else if ([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"].includes(extension)) {
+      resourceType = "image";
+    }
+
+    console.log(`   Detected resource type: ${resourceType}`);
 
     // Upload with timeout and resource type detection
     const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto",
+      resource_type: resourceType,
       timeout: 120000, // 2 minutes timeout
       chunk_size: 20000000, // 20MB chunks for large files
     });
@@ -85,6 +99,10 @@ const uploadOnCloudinary = async (localFilePath) => {
     console.log(`✅ Upload successful: ${response.url}`);
     console.log(`🎥 Public ID: ${response.public_id}`);
     console.log(`📄 Resource type: ${response.resource_type}`);
+    console.log(`📏 Dimensions: ${response.width}x${response.height}`);
+    if (response.duration) {
+      console.log(`⏱️ Duration: ${response.duration} seconds`);
+    }
 
     // Delete file only after successful upload
     try {
@@ -103,6 +121,14 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
     if (error.error && error.error.message) {
       console.error(`Cloudinary Error: ${error.error.message}`);
+    }
+    
+    // Log additional error details
+    if (error.name) {
+      console.error(`Error Name: ${error.name}`);
+    }
+    if (error.code) {
+      console.error(`Error Code: ${error.code}`);
     }
 
     // Try to cleanup local file even if upload failed

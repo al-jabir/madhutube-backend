@@ -66,7 +66,7 @@ export const createVideo = asyncHandler(async (req, res) => {
   const videoFile = await uploadOnCloudinary(videoFileLocalPath);
   if (!videoFile) {
     console.error("❌ Video file upload to Cloudinary failed");
-    throw new ApiError(500, "Failed to upload video file to cloudinary. Please check your Cloudinary configuration.");
+    throw new ApiError(500, "Failed to upload video file to Cloudinary. Please check server logs for detailed error information.");
   }
   console.log("✅ Video file uploaded successfully:", videoFile.url);
 
@@ -77,7 +77,7 @@ export const createVideo = asyncHandler(async (req, res) => {
     console.error("❌ Thumbnail upload to Cloudinary failed");
     // Cleanup video file if thumbnail upload fails
     await deleteFromCloudinary(videoFile.public_id);
-    throw new ApiError(500, "Failed to upload thumbnail to cloudinary. Please check your Cloudinary configuration.");
+    throw new ApiError(500, "Failed to upload thumbnail to Cloudinary. Please check server logs for detailed error information.");
   }
   console.log("✅ Thumbnail uploaded successfully:", thumbnail.url);
 

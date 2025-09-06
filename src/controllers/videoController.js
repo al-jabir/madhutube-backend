@@ -115,14 +115,14 @@ export const createVideo = asyncHandler(async (req, res) => {
 // Get all videos
 export const getAllVideos = asyncHandler(async (req, res) => {
   const videos = await Video.find().populate("owner", "username avatar");
-  
+
   // Add formatted duration to each video
   const videosWithFormattedDuration = videos.map(video => {
     const videoObj = video.toObject();
     videoObj.formattedDuration = formatDuration(videoObj.duration);
     return videoObj;
   });
-  
+
   res.json(new ApiResponse(200, videosWithFormattedDuration));
 });
 
@@ -133,11 +133,11 @@ export const getVideo = asyncHandler(async (req, res) => {
     "username avatar"
   );
   if (!video) throw new ApiError(404, "Video not found");
-  
+
   // Add formatted duration to video
   const videoObj = video.toObject();
   videoObj.formattedDuration = formatDuration(videoObj.duration);
-  
+
   res.json(new ApiResponse(200, videoObj));
 });
 

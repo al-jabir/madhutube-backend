@@ -122,7 +122,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     if (error.error && error.error.message) {
       console.error(`Cloudinary Error: ${error.error.message}`);
     }
-    
+
     // Log additional error details
     if (error.name) {
       console.error(`Error Name: ${error.name}`);

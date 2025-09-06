@@ -9,8 +9,11 @@ export const formatDuration = (seconds) => {
         return '0 sec';
     }
 
-    // Round to nearest integer
-    const totalSeconds = Math.round(seconds);
+    // Use a more precise rounding method to avoid floating-point precision issues
+    const preciseSeconds = Math.round((seconds + Number.EPSILON) * 100) / 100;
+
+    // For display purposes, we'll use whole seconds
+    const totalSeconds = Math.round(preciseSeconds);
 
     // Handle special case for less than 1 minute
     if (totalSeconds < 60) {

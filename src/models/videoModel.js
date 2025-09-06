@@ -20,7 +20,7 @@ const videSchema = new Schema(
       required: true,
     },
     duration: {
-      type: Number,
+      type: String,
       required: true,
       min: 0, // Ensure duration is non-negative
     },

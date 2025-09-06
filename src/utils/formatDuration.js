@@ -45,7 +45,8 @@ export const parseDuration = (formattedDuration) => {
 
     // If it's already in seconds format
     if (formattedDuration.endsWith('sec')) {
-        return parseInt(formattedDuration) || 0;
+        const secondsPart = formattedDuration.replace(' sec', '');
+        return parseInt(secondsPart) || 0;
     }
 
     // Split by colons

@@ -22,10 +22,12 @@ const videSchema = new Schema(
     duration: {
       type: Number,
       required: true,
+      min: 0, // Ensure duration is non-negative
     },
     views: {
       type: Number,
       default: 0,
+      min: 0, // Ensure views are non-negative
     },
     isPublished: {
       type: Boolean,
@@ -40,6 +42,11 @@ const videSchema = new Schema(
     timestamps: true,
   }
 );
+
+// Add indexes for better query performance
+videSchema.index({ owner: 1 });
+videSchema.index({ isPublished: 1 });
+videSchema.index({ createdAt: -1 });
 
 videSchema.plugin(mongooseAggregatePaginate);
 

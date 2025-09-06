@@ -27,7 +27,15 @@ export const getVideoDuration = (filePath) => {
             return;
         }
 
+        // Set a timeout for ffprobe operation
+        const timeout = setTimeout(() => {
+            reject(new Error("Video duration extraction timed out"));
+        }, 30000); // 30 seconds timeout
+
         ffmpeg.ffprobe(filePath, (err, metadata) => {
+            // Clear the timeout
+            clearTimeout(timeout);
+
             if (err) {
                 console.error("FFprobe error:", err);
                 reject(new Error(`Failed to probe video file: ${err.message}`));
@@ -37,6 +45,13 @@ export const getVideoDuration = (filePath) => {
             if (metadata && metadata.format && metadata.format.duration) {
                 // Round to 2 decimal places for precision
                 const duration = Math.round(metadata.format.duration * 100) / 100;
+                
+                // Validate that duration is reasonable (less than 24 hours)
+                if (duration <= 0 || duration > 86400) { // 86400 seconds = 24 hours
+                    reject(new Error("Video duration is invalid or exceeds maximum allowed duration"));
+                    return;
+                }
+                
                 console.log(`Extracted video duration: ${duration} seconds`);
                 resolve(duration);
             } else {
@@ -48,6 +63,12 @@ export const getVideoDuration = (filePath) => {
                     for (const stream of metadata.streams) {
                         if (stream.duration) {
                             const duration = Math.round(stream.duration * 100) / 100;
+                            
+                            // Validate that duration is reasonable
+                            if (duration <= 0 || duration > 86400) {
+                                continue; // Try next stream
+                            }
+                            
                             console.log(`Extracted video duration from stream: ${duration} seconds`);
                             resolve(duration);
                             return;

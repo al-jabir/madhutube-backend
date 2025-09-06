@@ -148,7 +148,13 @@ export const updateVideo = asyncHandler(async (req, res) => {
 
   if (title !== undefined) updateData.title = title;
   if (description !== undefined) updateData.description = description;
-  if (duration !== undefined) updateData.duration = parseFloat(duration);
+  if (duration !== undefined) {
+    const durationNum = parseFloat(duration);
+    if (isNaN(durationNum) || durationNum < 0) {
+      throw new ApiError(400, "Duration must be a valid non-negative number");
+    }
+    updateData.duration = durationNum;
+  }
 
   const video = await Video.findByIdAndUpdate(
     req.params.id,

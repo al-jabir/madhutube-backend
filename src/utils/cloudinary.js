@@ -54,6 +54,19 @@ const uploadOnCloudinary = async (localFilePath) => {
     const fileSizeInMB = stats.size / (1024 * 1024);
     console.log(`📁 File size: ${fileSizeInMB.toFixed(2)} MB`);
 
+    // Validate that file is not empty
+    if (stats.size === 0) {
+      console.error(`❌ File is empty: ${localFilePath}`);
+      // Clean up empty file
+      try {
+        fs.unlinkSync(localFilePath);
+        console.log(`🗑️ Empty file deleted: ${localFilePath}`);
+      } catch (deleteError) {
+        console.warn(`⚠️ Could not delete empty file: ${localFilePath}`, deleteError.message);
+      }
+      return null;
+    }
+
     // Validate Cloudinary configuration before upload
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
       console.error("❌ Cloudinary configuration is incomplete");

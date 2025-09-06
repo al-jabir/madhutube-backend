@@ -20,16 +20,42 @@ export const getVideoDuration = (filePath) => {
             return;
         }
 
+        // Get file stats for additional validation
+        const stats = fs.statSync(filePath);
+        if (stats.size === 0) {
+            reject(new Error("Video file is empty"));
+            return;
+        }
+
         ffmpeg.ffprobe(filePath, (err, metadata) => {
             if (err) {
-                reject(err);
+                console.error("FFprobe error:", err);
+                reject(new Error(`Failed to probe video file: ${err.message}`));
                 return;
             }
 
             if (metadata && metadata.format && metadata.format.duration) {
-                resolve(metadata.format.duration);
+                // Round to 2 decimal places for precision
+                const duration = Math.round(metadata.format.duration * 100) / 100;
+                console.log(`Extracted video duration: ${duration} seconds`);
+                resolve(duration);
             } else {
-                reject(new Error("Could not extract duration from video"));
+                // Try alternative method to get duration
+                console.warn("Primary duration extraction failed, trying alternative method");
+
+                // Check if streams contain duration information
+                if (metadata && metadata.streams && metadata.streams.length > 0) {
+                    for (const stream of metadata.streams) {
+                        if (stream.duration) {
+                            const duration = Math.round(stream.duration * 100) / 100;
+                            console.log(`Extracted video duration from stream: ${duration} seconds`);
+                            resolve(duration);
+                            return;
+                        }
+                    }
+                }
+
+                reject(new Error("Could not extract duration from video metadata"));
             }
         });
     });

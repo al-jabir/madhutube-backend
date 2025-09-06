@@ -50,6 +50,11 @@ export const createVideo = asyncHandler(async (req, res) => {
   try {
     duration = await getVideoDuration(videoFileLocalPath);
     console.log(`⏱️ Video duration extracted: ${duration} seconds`);
+
+    // Validate that we got a reasonable duration
+    if (typeof duration !== 'number' || isNaN(duration) || duration <= 0) {
+      throw new Error("Invalid video duration extracted");
+    }
   } catch (error) {
     console.error("❌ Failed to extract video duration:", error);
     throw new ApiError(500, `Failed to extract video duration: ${error.message}`);
@@ -82,7 +87,7 @@ export const createVideo = asyncHandler(async (req, res) => {
       thumbnail: thumbnail.url,
       title,
       description,
-      duration: parseFloat(duration),
+      duration: parseFloat(duration.toFixed(2)), // Ensure consistent formatting
       owner: req.user._id,
     });
 

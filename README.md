@@ -106,7 +106,7 @@ NODE_ENV=development
 
 ---
 
-© 2025 Madhutube Backend
+© 2026 Madhutube Backend
 
 ## Setup
 
@@ -171,4 +171,4 @@ NODE_ENV=development
 
 ---
 
-© 2025 Madhutube Backend
+© 2026 Madhutube Backend

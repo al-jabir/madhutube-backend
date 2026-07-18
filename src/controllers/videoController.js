@@ -128,13 +128,14 @@ export const getAllVideos = asyncHandler(async (req, res) => {
 
 // Get single video
 export const getVideo = asyncHandler(async (req, res) => {
-  const video = await Video.findById(req.params.id).populate(
-    "owner",
-    "username avatar"
-  );
+  const video = await Video.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { views: 1 } },
+    { new: true }
+  ).populate("owner", "username avatar");
+
   if (!video) throw new ApiError(404, "Video not found");
 
-  // Add formatted duration to video
   const videoObj = video.toObject();
   videoObj.formattedDuration = formatDuration(videoObj.duration);
 

@@ -7,6 +7,15 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 export const subscribe = asyncHandler(async (req, res) => {
   const { channelId } = req.body;
   if (!channelId) throw new ApiError(400, "channelId is required");
+
+  const existing = await Subscription.findOne({
+    subscriber: req.user._id,
+    channel: channelId,
+  });
+  if (existing) {
+    throw new ApiError(409, "Already subscribed");
+  }
+
   const subscription = await Subscription.create({
     subscriber: req.user._id,
     channel: channelId,
@@ -33,4 +42,25 @@ export const getUserSubscriptions = asyncHandler(async (req, res) => {
     subscriber: req.user._id,
   }).populate("channel", "username avatar");
   res.json(new ApiResponse(200, subscriptions));
+});
+
+// Check if user is subscribed to a channel
+export const checkSubscription = asyncHandler(async (req, res) => {
+  const { channelId } = req.params;
+  if (!channelId) throw new ApiError(400, "channelId is required");
+
+  const subscription = await Subscription.findOne({
+    subscriber: req.user._id,
+    channel: channelId,
+  });
+
+  // Get subscriber count
+  const subscriberCount = await Subscription.countDocuments({ channel: channelId });
+
+  res.json(
+    new ApiResponse(200, {
+      isSubscribed: !!subscription,
+      subscriberCount,
+    })
+  );
 });

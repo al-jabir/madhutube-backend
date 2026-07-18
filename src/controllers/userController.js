@@ -6,7 +6,9 @@ import {
   deleteFromCloudinary,
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
+import { sendPasswordResetMail } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import mongoose from "mongoose";
 
 // Helper to generate and save new access/refresh tokens for a user
@@ -78,10 +80,31 @@ const registerUser = asyncHandler(async (req, res) => {
       throw new ApiError(500, "Something went wrong while registering a user.");
     }
 
-    // Fixed: Consistent status code
+    // Generate tokens so user is logged in immediately after registration
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    };
+
     return res
       .status(201)
-      .json(new ApiResponse(201, createdUser, "User registered successfully"));
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          201,
+          {
+            user: createdUser,
+            accessToken,
+            refreshToken,
+          },
+          "User registered successfully"
+        )
+      );
   } catch (error) {
 
     // Cleanup uploaded images if user creation fails
@@ -369,6 +392,126 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user[0], "Watch history fetched successfully"));
 });
 
+// Generate a password reset token for the given email
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new ApiError(400, "Email is required");
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    // Return success even if user not found to prevent email enumeration
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          null,
+          "If an account exists with this email, a reset link has been sent"
+        )
+      );
+  }
+
+  // Generate a raw reset token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash the token before storing (never store raw tokens)
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  user.passwordResetToken = hashedToken;
+  user.passwordResetExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  await user.save({ validateBeforeSave: false });
+
+  // Build reset URL and send email
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+  try {
+    await sendPasswordResetMail(user.email, resetUrl);
+    console.log(`✉️ Password reset email sent to ${user.email}`);
+  } catch (emailError) {
+    console.error("Failed to send reset email:", emailError);
+    // Still return success to prevent email enumeration
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        null,
+        "If an account exists with this email, a reset link has been sent"
+      )
+    );
+});
+
+// Verify that a reset token is still valid
+const verifyResetToken = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  if (!token) {
+    throw new ApiError(400, "Token is required");
+  }
+
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new ApiError(400, "Token is invalid or has expired");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Token is valid"));
+});
+
+// Reset the user's password using a valid token
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!token) {
+    throw new ApiError(400, "Token is required");
+  }
+  if (!password) {
+    throw new ApiError(400, "New password is required");
+  }
+
+  const hashedToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const user = await User.findOne({
+    passwordResetToken: hashedToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new ApiError(400, "Token is invalid or has expired");
+  }
+
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  user.refreshToken = undefined; // Invalidate all sessions
+  await user.save();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Password reset successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -381,4 +524,7 @@ export {
   updateCoverImage,
   getUserChannelProfile,
   getWatchHistory,
+  forgotPassword,
+  verifyResetToken,
+  resetPassword,
 };
